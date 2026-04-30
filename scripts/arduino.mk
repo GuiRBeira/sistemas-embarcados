@@ -5,11 +5,26 @@
 # sketches Arduino usando arduino-cli.
 # ============================================================
 
-# Variáveis padrão (podem ser sobrescritas no Makefile local)
+# Variáveis padrão (podem ser sobrescritas no Makefile local ou via .board_config)
 BOARD ?= arduino:avr:uno
 PORT ?= /dev/ttyUSB0
 BAUD ?= 115200
 SKETCH ?= $(shell ls *.ino 2>/dev/null | head -n 1)
+
+# Aliases comuns para facilitar a troca
+# Ex: make compile BOARD=mega
+ifeq ($(BOARD),uno)
+  override BOARD = arduino:avr:uno
+endif
+ifeq ($(BOARD),mega)
+  override BOARD = arduino:avr:mega
+endif
+ifeq ($(BOARD),esp32)
+  override BOARD = esp32:esp32:esp32
+endif
+ifeq ($(BOARD),esp32s3)
+  override BOARD = esp32:esp32:esp32s3
+endif
 
 # Cores
 RED    = \033[0;31m
@@ -91,8 +106,8 @@ ports:
 	@ls -la /dev/ttyUSB* /dev/ttyACM* 2>/dev/null || echo "Nenhuma porta encontrada"
 
 list-boards:
-	@echo "$(YELLOW)📋 Placas disponíveis (core arduino:avr):$(NC)"
-	@arduino-cli board listall | grep -E "arduino:avr|^ " | head -20
+	@echo "$(YELLOW)📋 Placas disponíveis (Cores instalados):$(NC)"
+	@arduino-cli board listall | grep -E "arduino:avr|esp32:esp32|^ " | head -30
 
 lib-list:
 	@echo "$(YELLOW)📚 Bibliotecas instaladas:$(NC)"
