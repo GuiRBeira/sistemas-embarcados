@@ -1,0 +1,38 @@
+# Build e Binários
+build/
+bin/
+out/
+*.hex
+*.elf
+*.bin
+*.map
+*.o
+*.a
+*.so
+*.d
+
+# Caches e Temporários do Arduino
+*.cache
+*includes.cache
+.arduino15/
+
+# Dependências Locais (se houver)
+libraries/
+.pio/
+
+# Logs e Misc
+*.log
+*.tmp
+*.bak
+
+# Arquivos de Sistema e Editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*~
+
+# Arquivos de Configuração Local do Manager (Porta e Placa)
+.board_config
+.port_config
