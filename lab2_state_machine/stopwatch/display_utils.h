@@ -13,6 +13,7 @@ extern Adafruit_SSD1306 display;
 
 bool initDisplay();
 void atualizarDisplay(EstadoPrincipal estado, 
+                      SubEstadoAjuste subEstado,
                       int minAt, int segAt, 
                       int minAl, int segAl, 
                       int campoSel, const char* campos[],

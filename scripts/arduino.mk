@@ -81,7 +81,7 @@ upload: compile
 
 monitor:
 	@echo "$(YELLOW)📡 Monitor em $(PORT) ($(BAUD) baud)$(NC)"
-	@echo "$(YELLOW}Pressione Ctrl+C para sair$(NC)"
+	@echo "$(YELLOW)Pressione Ctrl+C para sair$(NC)"
 	arduino-cli monitor -p $(PORT) -c baudrate=$(BAUD)
 
 all: upload monitor

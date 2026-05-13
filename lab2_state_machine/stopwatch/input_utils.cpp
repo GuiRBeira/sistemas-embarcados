@@ -2,7 +2,7 @@
 
 // Variáveis internas para debounce e joystick
 static unsigned long tempoPressionado = 0;
-static const int LIMIAR_LONGO = 500; // Meio segundo para clique longo
+static const int LIMIAR_LONGO = 1000; 
 static EstadoBotao estadoBotaoInterno = BOTAO_ESPERA;
 
 static int ultimoValorX = 512;
@@ -29,18 +29,17 @@ EstadoBotao processarBotao() {
 
     case BOTAO_PRECIONADO:
       if (!pressionado) {
-        // Soltou antes do tempo de clique longo? É um clique curto.
-        // (Mínimo de 50ms para ignorar ruído/debounce)
+        // Soltou rápido: clique curto
         if (agora - tempoPressionado >= 50) {
-          estadoBotaoInterno = BOTAO_CONFIRMADO_CURTO;
+          estadoBotaoInterno = BOTAO_CONFIRMADO_CURTO; // Vai para o estado de confirmação
           return BOTAO_CONFIRMADO_CURTO;
         } else {
           estadoBotaoInterno = BOTAO_ESPERA;
         }
       } else {
-        // Ainda pressionado. Já passou do tempo de clique longo?
+        // Ainda segurando: clique longo
         if (agora - tempoPressionado >= LIMIAR_LONGO) {
-          estadoBotaoInterno = BOTAO_CONFIRMADO_LONGO;
+          estadoBotaoInterno = BOTAO_CONFIRMADO_LONGO; // Vai para o estado de confirmação
           return BOTAO_CONFIRMADO_LONGO;
         }
       }
@@ -48,7 +47,7 @@ EstadoBotao processarBotao() {
 
     case BOTAO_CONFIRMADO_CURTO:
     case BOTAO_CONFIRMADO_LONGO:
-      // Espera soltar para poder clicar de novo
+      // ESTADO DE TRAVA: Só volta a aceitar cliques quando você soltar o botão
       if (!pressionado) {
         estadoBotaoInterno = BOTAO_ESPERA;
       }

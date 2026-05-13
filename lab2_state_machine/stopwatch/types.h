@@ -8,6 +8,9 @@ typedef enum {
   ESTADO_ALARME_ATIVO
 } EstadoPrincipal;
 
+// Sub-estados do modo de ajuste
+typedef enum { SEL_CAMPO, INC_VALOR } SubEstadoAjuste;
+
 // Estados da Máquina de Estados do Botão (Debounce)
 typedef enum {
   BOTAO_ESPERA,

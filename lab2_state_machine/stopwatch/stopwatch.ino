@@ -21,6 +21,10 @@ unsigned long inicioAlarme = 0;
 const int duracaoAlarme = 5000;
 
 // Configuração do modo ajuste
+SubEstadoAjuste subEstadoAjuste = SEL_CAMPO;
+unsigned long tempoUltimaAtividade = 0;
+const int timeoutSubEstado = 3000; // 3s para voltar a selecionar campo
+
 int campoSelecionado = 0;
 const char* campos[] = {"Min Atual", "Seg Atual", "Min Alarme", "Seg Alarme"};
 
@@ -46,40 +50,52 @@ void pararAlarme() {
   noTone(PIN_BUZZER);
   estadoAtual = ESTADO_NORMAL;
   alarmeDisparado = false;
+  // Zera o tempo conforme solicitado
+  minutosAtual = 0;
+  segundosAtual = 0;
 }
 
 void tratarAcoesBotao(EstadoBotao b) {
   if (b == BOTAO_CONFIRMADO_CURTO) {
     if (estadoAtual == ESTADO_AJUSTE) {
+      // AJUSTE --> NORMAL: botão SW curto
       estadoAtual = ESTADO_NORMAL;
       alarmeDisparado = false;
-      atualizarDisplay(estadoAtual, minutosAtual, segundosAtual, minutosAlarme, segundosAlarme, campoSelecionado, campos, alarmeDisparado);
+      atualizarDisplay(estadoAtual, subEstadoAjuste, minutosAtual, segundosAtual, minutosAlarme, segundosAlarme, campoSelecionado, campos, alarmeDisparado);
     } else if (estadoAtual == ESTADO_ALARME_ATIVO) {
+      // ALARME_DISPARADO --> NORMAL: botão SW (DesligadoManual)
       pararAlarme();
-      atualizarDisplay(estadoAtual, minutosAtual, segundosAtual, minutosAlarme, segundosAlarme, campoSelecionado, campos, alarmeDisparado);
+      atualizarDisplay(estadoAtual, subEstadoAjuste, minutosAtual, segundosAtual, minutosAlarme, segundosAlarme, campoSelecionado, campos, alarmeDisparado);
     }
   } else if (b == BOTAO_CONFIRMADO_LONGO) {
     if (estadoAtual == ESTADO_NORMAL) {
+      // NORMAL --> AJUSTE: botão SW longo
       estadoAtual = ESTADO_AJUSTE;
+      subEstadoAjuste = SEL_CAMPO;
       campoSelecionado = 0;
-      atualizarDisplay(estadoAtual, minutosAtual, segundosAtual, minutosAlarme, segundosAlarme, campoSelecionado, campos, alarmeDisparado);
-    } else if (estadoAtual == ESTADO_AJUSTE) {
-      estadoAtual = ESTADO_NORMAL;
-      atualizarDisplay(estadoAtual, minutosAtual, segundosAtual, minutosAlarme, segundosAlarme, campoSelecionado, campos, alarmeDisparado);
+      atualizarDisplay(estadoAtual, subEstadoAjuste, minutosAtual, segundosAtual, minutosAlarme, segundosAlarme, campoSelecionado, campos, alarmeDisparado);
     } else if (estadoAtual == ESTADO_ALARME_ATIVO) {
+      // Também desliga o alarme no longo por conveniência
       pararAlarme();
-      atualizarDisplay(estadoAtual, minutosAtual, segundosAtual, minutosAlarme, segundosAlarme, campoSelecionado, campos, alarmeDisparado);
+      atualizarDisplay(estadoAtual, subEstadoAjuste, minutosAtual, segundosAtual, minutosAlarme, segundosAlarme, campoSelecionado, campos, alarmeDisparado);
     }
   }
 }
 
 void tratarAcoesJoystick(int dx, int dy) {
-  if (dx != 0) { // Mudar campo
+  tempoUltimaAtividade = millis();
+  
+  if (dx != 0) { 
+    // SelecionaCampo (Eixo X)
+    subEstadoAjuste = SEL_CAMPO;
     campoSelecionado += dx;
     if (campoSelecionado < 0) campoSelecionado = 3;
     if (campoSelecionado > 3) campoSelecionado = 0;
   }
-  if (dy != 0) { // Mudar valor
+  
+  if (dy != 0) { 
+    // IncrementaDecrementa (Eixo Y)
+    subEstadoAjuste = INC_VALOR;
     int delta = dy;
     switch (campoSelecionado) {
       case 0: minutosAtual = (minutosAtual + delta + 60) % 60; break;
@@ -103,7 +119,7 @@ void setup() {
   pinMode(PIN_BUZZER, OUTPUT);
   noTone(PIN_BUZZER);
 
-  atualizarDisplay(estadoAtual, minutosAtual, segundosAtual, 
+  atualizarDisplay(estadoAtual, subEstadoAjuste, minutosAtual, segundosAtual, 
                    minutosAlarme, segundosAlarme, campoSelecionado, 
                    campos, alarmeDisparado);
 }
@@ -117,21 +133,43 @@ void loop() {
     ultimoTick = agora;
     if (estadoAtual == ESTADO_NORMAL) {
       atualizarRelogio();
-      atualizarDisplay(estadoAtual, minutosAtual, segundosAtual, 
+      
+      // Verifica alarme somente quando o tempo muda
+      if (!alarmeDisparado && minutosAtual == minutosAlarme && segundosAtual == segundosAlarme) {
+        dispararAlarme();
+      }
+      
+      atualizarDisplay(estadoAtual, subEstadoAjuste, minutosAtual, segundosAtual, 
                        minutosAlarme, segundosAlarme, campoSelecionado, 
                        campos, alarmeDisparado);
     }
   }
 
   // 2. Processar Entradas
+  // Se o alarme estiver ativo, verificamos a pressão bruta do botão para parada instantânea
+  if (estadoAtual == ESTADO_ALARME_ATIVO && !digitalRead(PIN_SW)) {
+      pararAlarme();
+      atualizarDisplay(estadoAtual, subEstadoAjuste, minutosAtual, segundosAtual, 
+                       minutosAlarme, segundosAlarme, campoSelecionado, 
+                       campos, alarmeDisparado);
+  }
+
   EstadoBotao b = processarBotao();
   tratarAcoesBotao(b);
 
   if (estadoAtual == ESTADO_AJUSTE) {
+    // Timeout do sub-estado IncrementaDecrementa --> SelecionaCampo
+    if (subEstadoAjuste == INC_VALOR && agora - tempoUltimaAtividade >= timeoutSubEstado) {
+      subEstadoAjuste = SEL_CAMPO;
+      atualizarDisplay(estadoAtual, subEstadoAjuste, minutosAtual, segundosAtual, 
+                       minutosAlarme, segundosAlarme, campoSelecionado, 
+                       campos, alarmeDisparado);
+    }
+
     int dx, dy;
     if (lerJoystick(dx, dy)) {
       tratarAcoesJoystick(dx, dy);
-      atualizarDisplay(estadoAtual, minutosAtual, segundosAtual, 
+      atualizarDisplay(estadoAtual, subEstadoAjuste, minutosAtual, segundosAtual, 
                        minutosAlarme, segundosAlarme, campoSelecionado, 
                        campos, alarmeDisparado);
     }
@@ -140,18 +178,13 @@ void loop() {
   // 3. Lógica de Estados
   switch (estadoAtual) {
     case ESTADO_NORMAL:
-      if (!alarmeDisparado && minutosAtual == minutosAlarme && segundosAtual == segundosAlarme) {
-        dispararAlarme();
-        atualizarDisplay(estadoAtual, minutosAtual, segundosAtual, 
-                         minutosAlarme, segundosAlarme, campoSelecionado, 
-                         campos, alarmeDisparado);
-      }
+      // A verificação do alarme agora só ocorre no "tick" do relógio (movido para cima)
       break;
 
     case ESTADO_ALARME_ATIVO:
       if (agora - inicioAlarme >= duracaoAlarme) {
         pararAlarme();
-        atualizarDisplay(estadoAtual, minutosAtual, segundosAtual, 
+        atualizarDisplay(estadoAtual, subEstadoAjuste, minutosAtual, segundosAtual, 
                          minutosAlarme, segundosAlarme, campoSelecionado, 
                          campos, alarmeDisparado);
       }

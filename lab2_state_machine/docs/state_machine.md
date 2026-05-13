@@ -1,3 +1,4 @@
+```mermaid
 stateDiagram-v2
     [*] --> NORMAL
     
@@ -26,3 +27,4 @@ stateDiagram-v2
     AJUSTE --> NORMAL: botão SW curto
     NORMAL --> ALARME_DISPARADO: horario == alarme
     ALARME_DISPARADO --> NORMAL: (desligado)
+```
